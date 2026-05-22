@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Cube 4D — Three.js</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon" sizes="any">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="css/style.css?v=15">
+</head>
+<body>
+
+<header>
+    <h1>Magic Cube 4D</h1>
+    <span id="status">Status: Solved ✓</span>
+</header>
+
+<div id="main-layout">
+    <div id="canvas-container"></div>
+
+    <div id="sidebar">
+
+        <div class="panel panel-puzzle">
+            <h3>Puzzle</h3>
+            <label class="scramble-length-row" for="scramble-length">
+                <span>Scramble length</span>
+                <input type="range" id="scramble-length" min="1" max="30" value="10" />
+                <output id="scramble-length-val" for="scramble-length">10</output>
+            </label>
+            <div class="btn-row btn-row-compact puzzle-btn-row">
+                <button id="btn-scramble" class="btn-accent">Scramble</button>
+                <button id="btn-reset" class="danger">Reset</button>
+                <button id="btn-undo">Undo</button>
+            </div>
+            <div class="btn-row btn-row-compact puzzle-btn-row">
+                <button id="btn-recenter">Recenter view</button>
+                <button id="btn-rotate-w" type="button" title="Continuous spin in W (XW / YW)">Rotate W axis</button>
+                <button id="btn-rotate-zw" type="button" title="Continuous spin in ZW plane">Rotate ZW plane</button>
+            </div>
+            <label class="scramble-length-row rotation-speed-row" for="rotation-speed">
+                <span>Rotation speed</span>
+                <input type="range" id="rotation-speed" min="1" max="100" value="35" />
+                <output id="rotation-speed-val" for="rotation-speed">35</output>
+            </label>
+            <div class="btn-row btn-row-compact puzzle-btn-row">
+                <button id="btn-solve" class="btn-accent">Solve</button>
+                <button id="btn-rotate-start">Rotate continuously</button>
+                <button id="btn-rotate-stop">Stop rotation</button>
+            </div>
+            <p id="solve-progress" class="solve-progress"></p>
+        </div>
+
+        <div class="sidebar-split">
+            <div class="sidebar-main-column">
+                <div class="panel panel-log">
+                    <div class="solve-log-wrap">
+                        <div class="solve-log-header">
+                            <span>Solve log</span>
+                            <button type="button" id="btn-clear-solve-log" class="solve-log-clear" title="Clear log">Clear</button>
+                        </div>
+                        <div id="solve-log" class="solve-log" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <div class="panel panel-guide">
+                    <h3>Guide</h3>
+                    <dl class="guide-list">
+                        <dt>Face</dt>
+                        <dd>Which axis you turn. <strong>R L U D F B</strong> are the usual 3D faces; <strong>O / I</strong> are +W and −W (the fourth dimension).</dd>
+
+                        <dt>Layer</dt>
+                        <dd>Which parallel slice moves along that face—like outer / middle / inner on a 3×3×3, but here each “slice” is a full 3×3×3 block in 4D.</dd>
+
+                        <dt>Plane A · B · C</dt>
+                        <dd>A 4D face can spin in three different 2D planes (three ways to pair the axes inside the facet). <strong>A</strong> shallow, <strong>B</strong> wide (default), <strong>C</strong> deep—if a twist looks wrong, try another plane.</dd>
+
+                        <dt>CCW / CW</dt>
+                        <dd>Turn direction when looking straight at the selected face sticker.</dd>
+
+                        <dt>Solve log</dt>
+                        <dd>Records manual twists and solve playback. <strong>Scramble</strong> / <strong>Reset</strong> clear it. <strong>Solve</strong> reverses an in-app scramble.</dd>
+
+                        <dt>View rotation</dt>
+                        <dd>Only moves the camera, not the puzzle. Use <strong>Rotation speed</strong> while auto-spin is on.</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="sidebar-tools-strip">
+                <div class="panel panel-compact">
+                    <h3>Select Face</h3>
+                    <div id="face-grid" class="face-grid-strip">
+                        <button id="face-0" class="face-btn">
+                            <span class="face-swatch" style="background:#cc3333"></span>+X
+                        </button>
+                        <button id="face-1" class="face-btn">
+                            <span class="face-swatch" style="background:#ff9922"></span>−X
+                        </button>
+                        <button id="face-2" class="face-btn">
+                            <span class="face-swatch" style="background:#ffffff;border:1px solid #555"></span>+Y
+                        </button>
+                        <button id="face-3" class="face-btn">
+                            <span class="face-swatch" style="background:#ffff00"></span>−Y
+                        </button>
+                        <button id="face-4" class="face-btn">
+                            <span class="face-swatch" style="background:#88ee66"></span>+Z
+                        </button>
+                        <button id="face-5" class="face-btn">
+                            <span class="face-swatch" style="background:#33aaff"></span>−Z
+                        </button>
+                        <button id="face-6" class="face-btn">
+                            <span class="face-swatch" style="background:#ff66ff"></span>+W
+                        </button>
+                        <button id="face-7" class="face-btn">
+                            <span class="face-swatch" style="background:#8822cc"></span>−W
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel panel-compact panel-glance">
+                    <h3>At a glance</h3>
+                    <dl class="glance-list">
+                        <dt>State</dt>
+                        <dd id="sel-state">Solved</dd>
+                        <dt>Face</dt>
+                        <dd id="sel-face">—</dd>
+                        <dt>Layer</dt>
+                        <dd id="sel-layer">outer</dd>
+                        <dt>Plane</dt>
+                        <dd id="sel-plane">B (wide)</dd>
+                        <dt>Moves</dt>
+                        <dd id="sel-moves">0</dd>
+                    </dl>
+                </div>
+
+                <div class="panel panel-compact panel-twist">
+                    <h3>Twist Layer</h3>
+                    <fieldset class="twist-option-group">
+                        <legend class="twist-option-label">Layer</legend>
+                        <div class="twist-radio-row" role="radiogroup" aria-label="Twist layer">
+                            <label class="twist-radio">
+                                <input type="radio" name="twist-slice" value="outer" checked />
+                                <span>Outer</span>
+                            </label>
+                            <label class="twist-radio">
+                                <input type="radio" name="twist-slice" value="middle" />
+                                <span>Middle</span>
+                            </label>
+                            <label class="twist-radio">
+                                <input type="radio" name="twist-slice" value="inner" />
+                                <span>Inner</span>
+                            </label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="twist-option-group">
+                        <legend class="twist-option-label">Plane</legend>
+                        <div class="twist-radio-row" role="radiogroup" aria-label="Twist plane">
+                            <label class="twist-radio" title="Plane A (shallow)">
+                                <input type="radio" name="twist-plane" value="shallow" />
+                                <span>A</span>
+                            </label>
+                            <label class="twist-radio" title="Plane B (wide)">
+                                <input type="radio" name="twist-plane" value="wide" checked />
+                                <span>B</span>
+                            </label>
+                            <label class="twist-radio" title="Plane C (deep)">
+                                <input type="radio" name="twist-plane" value="deep" />
+                                <span>C</span>
+                            </label>
+                        </div>
+                    </fieldset>
+                    <div class="btn-row btn-row-compact twist-twist-btns">
+                        <button id="btn-ccw" class="btn-accent">↺ CCW</button>
+                        <button id="btn-cw" class="btn-accent">↻ CW</button>
+                    </div>
+                </div>
+
+                <div class="panel panel-compact panel-controls">
+                    <h3>Controls</h3>
+                    <div class="instructions">
+                        <span><kbd>Drag</kbd> Rotate 3D view</span>
+                        <span><kbd>Shift</kbd>+Drag → W axis</span>
+                        <span><kbd>Ctrl</kbd>+Drag → ZW plane</span>
+                        <span>Click cubie → pick face</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    <span id="hint">Drag to rotate view · Rotate W / ZW / continuously · Stop rotation · Click a cubie, then CW / CCW</span>
+</footer>
+
+<script type="module" src="js/main.js?v=89"></script>
+</body>
+</html>

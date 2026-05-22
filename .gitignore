@@ -1,0 +1,6 @@
+# Cursor / Claude local settings (do not publish)
+.claude/
+
+# python
+__pycache__/
+*.pyc
